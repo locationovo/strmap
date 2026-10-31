@@ -1,0 +1,9 @@
+*.o
+*.d
+strmap
+strmap_*
+strmap_out/
+version.h
+.DS_Store
+layout/
+*.deb

@@ -1,0 +1,76 @@
+name: Build & Release strmap
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dpkg and ldid
+        run: |
+          brew install dpkg
+          brew install ldid || true
+          if ! command -v ldid >/dev/null 2>&1; then
+            curl -L https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64 -o /usr/local/bin/ldid
+            chmod +x /usr/local/bin/ldid
+          fi
+
+      - name: Read VERSION
+        id: get_version
+        run: echo "TAG_NAME=v$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_ENV
+
+      - name: Build arm64
+        run: |
+          make clean
+          make deb
+          mv strmap_iphoneos-arm64.deb /tmp/strmap_iphoneos-arm64.deb
+          
+      - name: Build arm64e
+        run: |
+          make clean
+          make deb ROOTHIDE=1
+          mv strmap_iphoneos-arm64e.deb /tmp/strmap_iphoneos-arm64e.deb
+          
+      - name: Build bin
+        run: |
+          make clean
+          make
+          tar -czvf /tmp/strmap_bin.tar.gz strmap entitlements.plist
+          
+      - name: Prepare files
+        run: |
+          cp /tmp/strmap_iphoneos-arm64.deb .
+          cp /tmp/strmap_iphoneos-arm64e.deb .
+          cp /tmp/strmap_bin.tar.gz .
+          echo "--- Generated Files ---"
+          ls -lh *.deb *.tar.gz
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: strmap-builds
+          path: |
+            strmap_iphoneos-arm64.deb
+            strmap_iphoneos-arm64e.deb
+            strmap_bin.tar.gz
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          overwrite_files: true
+          files: |
+            strmap_iphoneos-arm64.deb
+            strmap_iphoneos-arm64e.deb
+            strmap_bin.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

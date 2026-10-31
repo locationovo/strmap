@@ -1,0 +1,9 @@
+Package: com.locationovo.strmap
+Name: strmap
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Binary String & UI Extractor
+Maintainer: locationovo <locationovo@outlook.com>
+Author: locationovo <locationovo@outlook.com>
+Section: Development
+Depends: firmware (>= 14.0), jtool2
