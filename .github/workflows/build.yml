@@ -1,0 +1,54 @@
+name: Build & Release strmap
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dpkg
+        run: brew install dpkg
+
+      - name: Read VERSION
+        id: get_version
+        run: echo "TAG_NAME=v$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_ENV
+
+      - name: Build all targets
+        run: |
+          make clean
+          make deb
+          mv strmap_iphoneos-arm64.deb strmap_arm64.deb
+          make deb ROOTHIDE=1
+          mv strmap_iphoneos-arm64e.deb strmap_arm64e.deb
+          make
+          tar -czvf strmap_bin.tar.gz strmap
+          rm -rf layout
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: strmap-builds
+          path: |
+            strmap_arm64.deb
+            strmap_arm64e.deb
+            strmap_bin.tar.gz
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          files: |
+            strmap_arm64.deb
+            strmap_arm64e.deb
+            strmap_bin.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
